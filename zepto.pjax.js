@@ -18,6 +18,24 @@
  */ 
  $.isPlainObject = function( obj ){ return typeof obj === 'object' && obj.constructor === Object };
 
+$.inArray = function( elem, array, i ) {
+	var len;
+	if ( array ) {
+		if ( Array.prototype.indexOf ) {
+			return Array.prototype.indexOf.call( array, elem, i );
+		}
+		len = array.length;
+		i = i ? i < 0 ? Math.max( 0, len + i ) : i : 0;
+		for ( ; i < len; i++ ) {
+			if ( i in array && array[ i ] === elem ) {
+				return i;
+			}
+		}
+	}
+	return -1;
+};
+
+
 // When called on a link, fetches the href with ajax into the
 // container specified as the first parameter or with the data-pjax
 // attribute on the link itself.
@@ -424,13 +442,8 @@ $(window).bind('popstate', function(event){
 })
 
 
-// Add the state property to jQuery's event object so we can use it in
-// $(window).bind('popstate')
-if ( $.inArray('state', $.event.props) < 0 )
-  $.event.props.push('state')
-
-
 // Is pjax supported by this browser?
+$.support = {};
 $.support.pjax =
   window.history && window.history.pushState && window.history.replaceState
   // pushState isn't reliable on iOS until 5.
