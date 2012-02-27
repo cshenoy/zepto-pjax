@@ -1,8 +1,22 @@
-// jquery.pjax.js
+// zepto.pjax.js
 // copyright chris wanstrath
 // https://github.com/defunkt/jquery-pjax
+// https://github.com/jimisaacs/zepto-pjax
+// https://github.com/najeira/zepto-pjax
 
 (function($){
+
+/**
+ * Add noop to Zepto - should be in there already
+ * It's good to have to only reference one dummy function rather than create multiple empties.
+ */
+ $.noop = function(){};
+
+/**
+ * Add isPlainObject to Zepto - This one is questionable.
+ * It's good to have to not need to rewrite this plugin, but is it needed in a minimal framework?
+ */ 
+ $.isPlainObject = function( obj ){ return typeof obj === 'object' && obj.constructor === Object };
 
 // When called on a link, fetches the href with ajax into the
 // container specified as the first parameter or with the data-pjax
@@ -125,7 +139,7 @@ function parseURL(url) {
 //
 // Returns whatever $.ajax returns.
 var pjax = $.pjax = function( options ) {
-  options = $.extend(true, {}, $.ajaxSettings, pjax.defaults, options)
+  options = $.extend({}, $.ajaxSettings, pjax.defaults, options)
 
   if ($.isFunction(options.url)) {
     options.url = options.url()
@@ -232,7 +246,7 @@ var pjax = $.pjax = function( options ) {
     } else {
       // If we got no data or an entire web page, go directly
       // to the page and let normal error handling happen.
-      if ( !$.trim(data) || /<html/i.test(data) )
+      if ( !data.trim() || /<html/i.test(data) )
         return window.location = url
 
       this.html(data)
@@ -242,7 +256,7 @@ var pjax = $.pjax = function( options ) {
       title = this.find('title').remove().text()
     }
 
-    if ( title ) document.title = $.trim(title)
+    if ( title ) document.title = title.trim()
 
     var state = {
       url: url,
@@ -457,4 +471,4 @@ if ( !$.support.pjax ) {
   $.fn.pjax = function() { return this }
 }
 
-})(jQuery);
+})(Zepto || jQuery);
