@@ -240,7 +240,7 @@ work normally) and `$.pjax({url:url})` calls will redirect to the given URL.
 
 ```
 $ cd path/to/js
-$ wget https://github.com/defunkt/jquery-pjax/raw/master/jquery.pjax.js
+$ wget https://github.com/najeira/zepto-pjax/raw/master/zepto.pjax.js
 ```
 
 Then, in your HTML:
@@ -259,6 +259,6 @@ e.g. `public/javascripts`.
 curl \
   -d output_info=compiled_code \
   -d compilation_level=SIMPLE_OPTIMIZATIONS \
-  -d code_url=https://github.com/defunkt/jquery-pjax/raw/master/jquery.pjax.js \
+  -d code_url=https://github.com/najeira/zepto-pjax/raw/master/zepto.pjax.js \
   http://closure-compiler.appspot.com/compile
 ```
