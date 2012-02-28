@@ -21,6 +21,11 @@
           `-"--'---'
 
 
+## zepto-pjax
+
+zepto-pjax is forked from jquery-pjax for zepto.js.
+
+
 ## what is it?
 
 pjax loads HTML from your server into the current page
