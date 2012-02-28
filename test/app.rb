@@ -30,8 +30,8 @@ get '/' do
   erb :qunit
 end
 
-get '/jquery.pjax.js' do
-  send_file "#{settings.root}/../jquery.pjax.js"
+get '/zepto.pjax.js' do
+  send_file "#{settings.root}/../zepto.pjax.js"
 end
 
 get '/env.html' do
