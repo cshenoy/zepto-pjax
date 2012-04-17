@@ -57,6 +57,34 @@ if ($.support.pjax) {
     })
   })
 
+  asyncTest("sets title to response nested <title>", function() {
+    var frame = this.frame
+
+    frame.$.pjax({
+      url: "nested_title.html",
+      container: "#main",
+      success: function() {
+        equal(frame.document.title, "Hello")
+        ok(!frame.$("#main title").length)
+        start()
+      }
+    })
+  })
+
+  asyncTest("sets title to response last <title>", function() {
+    var frame = this.frame
+
+    frame.$.pjax({
+      url: "double_title.html",
+      container: "#main",
+      success: function() {
+        equal(frame.document.title, "World!")
+        ok(!frame.$("#main title").length)
+        start()
+      }
+    })
+  })
+
 
   asyncTest("container option accepts String selector", function() {
     var frame = this.frame
@@ -125,7 +153,7 @@ if ($.support.pjax) {
     })
   })
 
-  asyncTest("sets hidden _pjax=true param on XHR GET request", function() {
+  asyncTest("sets X-PJAX-Container header to container on XHR request", function() {
     var frame = this.frame
 
     frame.$.pjax({
@@ -133,7 +161,39 @@ if ($.support.pjax) {
       container: "#main",
       success: function() {
         var env = JSON.parse(frame.$("#env").text())
-        equal(env['rack.request.query_hash']['_pjax'], 'true')
+        equal(env['HTTP_X_PJAX_CONTAINER'], "#main")
+        start()
+      }
+    })
+  })
+
+  asyncTest("sets hidden _pjax param on XHR GET request", function() {
+    var frame = this.frame
+
+    frame.$.pjax({
+      url: "env.html",
+      container: "#main",
+      success: function() {
+        var env = JSON.parse(frame.$("#env").text())
+        equal(env['rack.request.query_hash']['_pjax'], '#main')
+        start()
+      }
+    })
+  })
+
+  asyncTest("preserves query string on GET request", function() {
+    var frame = this.frame
+
+    frame.$.pjax({
+      url: "env.html?foo=1&bar=2",
+      container: "#main",
+      complete: function() {
+        equal(frame.location.pathname, "/env.html")
+        equal(frame.location.search, "?foo=1&bar=2")
+
+        var env = JSON.parse(frame.$("#env").text())
+        equal(env['rack.request.query_hash']['foo'], '1')
+        equal(env['rack.request.query_hash']['bar'], '2')
         start()
       }
     })
@@ -317,7 +377,7 @@ if ($.support.pjax) {
     frame.$("#main").on("pjax:beforeSend", function(event, xhr, settings, options) {
       ok(event)
       ok(xhr)
-      equal(settings.url, "hello.html?_pjax=true")
+      equal(settings.url, "hello.html?_pjax=%23main")
     })
 
     frame.$.pjax({
@@ -325,7 +385,7 @@ if ($.support.pjax) {
       container: "#main",
       beforeSend: function(xhr, settings) {
         ok(xhr)
-        equal(settings.url, "hello.html?_pjax=true")
+        equal(settings.url, "hello.html?_pjax=%23main")
       },
       success: function(data, status, xhr) {
         start()
@@ -608,5 +668,82 @@ if ($.support.pjax) {
         start()
       }
     })
+  })
+
+  asyncTest("lazily sets initial $.pjax.state", function() {
+    var frame = this.frame
+
+    ok(!frame.$.pjax.state)
+
+    frame.$.pjax({
+      url: "hello.html",
+      container: "#main",
+      success: start
+    })
+
+    ok(frame.$.pjax.state.id)
+    ok(frame.$.pjax.state.url.match("/home.html"))
+    equal(frame.$.pjax.state.container, "#main")
+  })
+
+  asyncTest("updates $.pjax.state to new page", function() {
+    var frame = this.frame
+
+    frame.$.pjax({
+      url: "hello.html",
+      container: "#main",
+      success: function() {
+        ok(frame.$.pjax.state.id)
+        ok(frame.$.pjax.state.url.match("/hello.html"))
+        equal(frame.$.pjax.state.container, "#main")
+        start()
+      }
+    })
+  })
+
+  asyncTest("new id is generated for new pages", function() {
+    var frame = this.frame
+
+    var oldId
+
+    frame.$.pjax({
+      url: "hello.html",
+      container: "#main",
+      success: function() {
+        ok(frame.$.pjax.state.id)
+        notEqual(oldId, frame.$.pjax.state.id)
+        start()
+      }
+    })
+
+    ok(frame.$.pjax.state.id)
+    oldId = frame.$.pjax.state.id
+  })
+
+  asyncTest("id is the same going back", function() {
+    var frame = this.frame
+
+    var oldId
+
+    equal(frame.location.pathname, "/home.html")
+
+    frame.$.pjax({
+      url: "hello.html",
+      container: "#main",
+      complete: function() {
+        ok(frame.$.pjax.state.id)
+        notEqual(oldId, frame.$.pjax.state.id)
+
+        ok(frame.history.length > 1)
+        goBack(frame, function() {
+          ok(frame.$.pjax.state.id)
+          equal(oldId, frame.$.pjax.state.id)
+          start()
+        })
+      }
+    })
+
+    ok(frame.$.pjax.state.id)
+    oldId = frame.$.pjax.state.id
   })
 }

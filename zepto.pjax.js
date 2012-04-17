@@ -56,9 +56,8 @@ $.inArray = function( elem, array, i ) {
 //
 // Returns the jQuery object
 $.fn.pjax = function( container, options ) {
-  options = optionsFor(container, options)
-  return this.live('click', function(event){
-    return handleClick(event, options)
+  return this.on('click.pjax', function(event){
+    return handleClick(event, container, options)
   })
 }
 
@@ -86,6 +85,9 @@ function handleClick(event, container, options) {
 
   var link = event.currentTarget
 
+  if (link.tagName.toUpperCase() !== 'A')
+    throw "$.fn.pjax or $.pjax.click requires an anchor element"
+
   // Middle click, cmd click, and ctrl click should open
   // links in a new tab as normal.
   if ( event.which > 1 || event.metaKey )
@@ -112,29 +114,6 @@ function handleClick(event, container, options) {
 
   event.preventDefault()
   return false
-}
-
-// Internal: Strips _pjax=true param from url
-//
-// url - String
-//
-// Returns String.
-function stripPjaxParam(url) {
-  return url
-    .replace(/\?_pjax=true&?/, '?')
-    .replace(/_pjax=true&?/, '')
-    .replace(/\?$/, '')
-}
-
-// Internal: Parse URL components and returns a Locationish object.
-//
-// url - String URL
-//
-// Returns HTMLAnchorElement that acts like Location.
-function parseURL(url) {
-  var a = document.createElement('a')
-  a.href = url
-  return a
 }
 
 
@@ -169,8 +148,7 @@ var pjax = $.pjax = function( options ) {
   // DEPRECATED: use options.target
   if (!target && options.clickedElement) target = options.clickedElement[0]
 
-  var url  = options.url
-  var hash = parseURL(url).hash
+  var hash = parseURL(options.url).hash
 
   // DEPRECATED: Save references to original event callbacks. However,
   // listening for custom pjax:* events is prefered.
@@ -181,6 +159,13 @@ var pjax = $.pjax = function( options ) {
 
   var context = options.context = findContainerFor(options.container)
 
+  // We want the browser to maintain two separate internal caches: one
+  // for pjax'd partial page loads and one for normal page loads.
+  // Without adding this secret parameter, some browsers will often
+  // confuse the two.
+  if (!options.data) options.data = {}
+  options.data._pjax = context.selector
+
   function fire(type, args) {
     var event = $.Event(type, { relatedTarget: target })
     context.trigger(event, args)
@@ -190,8 +175,6 @@ var pjax = $.pjax = function( options ) {
   var timeoutTimer
 
   options.beforeSend = function(xhr, settings) {
-    url = stripPjaxParam(settings.url)
-
     if (settings.timeout > 0) {
       timeoutTimer = setTimeout(function() {
         if (fire('pjax:timeout', [xhr, options]))
@@ -203,6 +186,7 @@ var pjax = $.pjax = function( options ) {
     }
 
     xhr.setRequestHeader('X-PJAX', 'true')
+    xhr.setRequestHeader('X-PJAX-Container', context.selector)
 
     var result
 
@@ -234,71 +218,39 @@ var pjax = $.pjax = function( options ) {
   }
 
   options.error = function(xhr, textStatus, errorThrown) {
-    var respUrl = xhr.getResponseHeader('X-PJAX-URL')
-    if (respUrl) url = stripPjaxParam(respUrl)
+    var container = extractContainer("", xhr, options)
 
     // DEPRECATED: Invoke original `error` handler
     if (oldError) oldError.apply(this, arguments)
 
     var allowed = fire('pjax:error', [xhr, textStatus, errorThrown, options])
     if (textStatus !== 'abort' && allowed)
-      window.location = url
+      window.location = container.url
   }
 
   options.success = function(data, status, xhr) {
-    var respUrl = xhr.getResponseHeader('X-PJAX-URL')
-    if (respUrl) url = stripPjaxParam(respUrl)
+    var container = extractContainer(data, xhr, options)
 
-    var title, oldTitle = document.title
-
-    if ( options.fragment ) {
-      // If they specified a fragment, look for it in the response
-      // and pull it out.
-      var html = $('<html>').html(data)
-      var $fragment = html.find(options.fragment)
-      if ( $fragment.length ) {
-        this.html($fragment.contents())
-
-        // If there's a <title> tag in the response, use it as
-        // the page's title. Otherwise, look for data-title and title attributes.
-        title = html.find('title').text() || $fragment.attr('title') || $fragment.data('title')
-      } else {
-        return window.location = url
-      }
-    } else {
-      // If we got no data or an entire web page, go directly
-      // to the page and let normal error handling happen.
-      if ( !data.trim() || /<html/i.test(data) )
-        return window.location = url
-
-      this.html(data)
-
-      // If there's a <title> tag in the response, use it as
-      // the page's title.
-      title = this.find('title').remove().text()
+    if (!container.contents) {
+      window.location = container.url
+      return
     }
 
-    if ( title ) document.title = title.trim()
-
-    var state = {
-      url: url,
-      pjax: this.selector,
+    pjax.state = {
+      id: options.id || uniqueId(),
+      url: container.url,
+      container: context.selector,
       fragment: options.fragment,
       timeout: options.timeout
     }
 
-    if ( options.replace ) {
-      pjax.active = true
-      window.history.replaceState(state, document.title, url)
-    } else if ( options.push ) {
-      // this extra replaceState before first push ensures good back
-      // button behavior
-      if ( !pjax.active ) {
-        window.history.replaceState($.extend({}, state, {url:null}), oldTitle)
-        pjax.active = true
-      }
+    if (container.title) document.title = container.title
+    context.html(container.contents)
 
-      window.history.pushState(state, document.title, url)
+    if ( options.replace ) {
+      window.history.replaceState(pjax.state, container.title, container.url)
+    } else if ( options.push ) {
+      window.history.pushState(pjax.state, container.title, container.url)
     }
 
     // Google Analytics support
@@ -318,6 +270,21 @@ var pjax = $.pjax = function( options ) {
   }
 
 
+  // Initialize pjax.state for the initial page load. Assume we're
+  // using the container and options of the link we're loading for the
+  // back button to the initial page. This ensures good back button
+  // behavior.
+  if (!pjax.state) {
+    pjax.state = {
+      id: uniqueId(),
+      url: window.location.href,
+      container: context.selector,
+      fragment: options.fragment,
+      timeout: options.timeout
+    }
+    window.history.replaceState(pjax.state, document.title)
+  }
+
   // Cancel the current request if we're already pjaxing
   var xhr = pjax.xhr
   if ( xhr && xhr.readyState < 4) {
@@ -332,6 +299,39 @@ var pjax = $.pjax = function( options ) {
   return pjax.xhr
 }
 
+
+// Internal: Generate unique id for state object.
+//
+// Use a timestamp instead of a counter since ids should still be
+// unique across page loads.
+//
+// Returns Number.
+function uniqueId() {
+  return (new Date).getTime()
+}
+
+// Internal: Strips _pjax param from url
+//
+// url - String
+//
+// Returns String.
+function stripPjaxParam(url) {
+  return url
+    .replace(/\?_pjax=[^&]+&?/, '?')
+    .replace(/_pjax=[^&]+&?/, '')
+    .replace(/[\?&]$/, '')
+}
+
+// Internal: Parse URL components and returns a Locationish object.
+//
+// url - String URL
+//
+// Returns HTMLAnchorElement that acts like Location.
+function parseURL(url) {
+  var a = document.createElement('a')
+  a.href = url
+  return a
+}
 
 // Internal: Build options Object for arguments.
 //
@@ -392,15 +392,92 @@ function findContainerFor(container) {
   }
 }
 
+// Internal: Filter and find all elements matching the selector.
+//
+// Where $.fn.find only matches descendants, findAll will test all the
+// top level elements in the jQuery object as well.
+//
+// elems    - jQuery object of Elements
+// selector - String selector to match
+//
+// Returns a jQuery object.
+function findAll(elems, selector) {
+  var results = $()
+  elems.each(function() {
+    if ($(this).is(selector))
+      results = results.add(this)
+    results = results.add(selector, this)
+  })
+  return results
+}
+
+// Internal: Extracts container and metadata from response.
+//
+// 1. Extracts X-PJAX-URL header if set
+// 2. Extracts inline <title> tags
+// 3. Builds response Element and extracts fragment if set
+//
+// data    - String response data
+// xhr     - XHR response
+// options - pjax options Object
+//
+// Returns an Object with url, title, and contents keys.
+function extractContainer(data, xhr, options) {
+  var obj = {}
+
+  // Prefer X-PJAX-URL header if it was set, otherwise fallback to
+  // using the original requested url.
+  obj.url = stripPjaxParam(xhr.getResponseHeader('X-PJAX-URL') || options.url)
+
+  // Attempt to parse response html into elements
+  var $data = $(data)
+
+  // If response data is empty, return fast
+  if ($data.length === 0)
+    return obj
+
+  // If there's a <title> tag in the response, use it as
+  // the page's title.
+  obj.title = findAll($data, 'title').last().text()
+
+  if (options.fragment) {
+    // If they specified a fragment, look for it in the response
+    // and pull it out.
+    var $fragment = findAll($data, options.fragment).first()
+
+    if ($fragment.length) {
+      obj.contents = $fragment.contents()
+
+      // If there's no title, look for data-title and title attributes
+      // on the fragment
+      if (!obj.title)
+        obj.title = $fragment.attr('title') || $fragment.data('title')
+    }
+
+  } else if (!/<html/i.test(data)) {
+    obj.contents = $data
+  }
+
+  // Clean up any <title> tags
+  if (obj.contents) {
+    // Remove any parent title elements
+    obj.contents = obj.contents.not('title')
+
+    // Then scrub any titles from their descendents
+    obj.contents.find('title').remove()
+  }
+
+  // Trim any whitespace off the title
+  if (obj.title) obj.title = obj.title.trim()
+
+  return obj
+}
+
 
 pjax.defaults = {
   timeout: 650,
   push: true,
   replace: false,
-  // We want the browser to maintain two separate internal caches: one for
-  // pjax'd partial page loads and one for normal page loads. Without
-  // adding this secret parameter, some browsers will often confuse the two.
-  data: { _pjax: true },
   type: 'GET',
   dataType: 'html'
 }
@@ -426,18 +503,20 @@ $(window).bind('popstate', function(event){
 
   var state = event.state
 
-  if ( state && state.pjax ) {
-    var container = state.pjax
-    if ( $(container+'').length )
+  if (state && state.container) {
+    var container = $(state.container)
+    if (container.length) {
       $.pjax({
-        url: state.url || location.href,
-        fragment: state.fragment,
+        id: state.id,
+        url: state.url,
         container: container,
         push: false,
+        fragment: state.fragment,
         timeout: state.timeout
       })
-    else
+    } else {
       window.location = location.href
+    }
   }
 })
 
