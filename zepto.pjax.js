@@ -10,30 +10,7 @@
  * Add noop to Zepto - should be in there already
  * It's good to have to only reference one dummy function rather than create multiple empties.
  */
- $.noop = function(){};
-
-/**
- * Add isPlainObject to Zepto - This one is questionable.
- * It's good to have to not need to rewrite this plugin, but is it needed in a minimal framework?
- */ 
- $.isPlainObject = function( obj ){ return typeof obj === 'object' && obj.constructor === Object };
-
-$.inArray = function( elem, array, i ) {
-	var len;
-	if ( array ) {
-		if ( Array.prototype.indexOf ) {
-			return Array.prototype.indexOf.call( array, elem, i );
-		}
-		len = array.length;
-		i = i ? i < 0 ? Math.max( 0, len + i ) : i : 0;
-		for ( ; i < len; i++ ) {
-			if ( i in array && array[ i ] === elem ) {
-				return i;
-			}
-		}
-	}
-	return -1;
-};
+$.noop = function(){};
 
 
 // When called on a link, fetches the href with ajax into the
