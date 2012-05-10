@@ -613,16 +613,19 @@ if ($.support.pjax) {
     var frame = this.frame
 
     equal(frame.location.pathname, "/home.html")
+    equal(frame.document.title, "Home")
 
     frame.$.pjax({
       url: "hello.html",
       container: "#main",
       complete: function() {
         equal(frame.location.pathname, "/hello.html")
+        equal(frame.document.title, "Hello")
 
         ok(frame.history.length > 1)
         goBack(frame, function() {
           equal(frame.location.pathname, "/home.html")
+          equal(frame.document.title, "Home")
           start()
         })
       }
@@ -633,17 +636,20 @@ if ($.support.pjax) {
     var frame = this.frame
 
     equal(frame.location.pathname, "/home.html")
+    equal(frame.document.title, "Home")
 
     frame.$.pjax({
       url: "hello.html",
       container: "#main",
       complete: function() {
         equal(frame.location.pathname, "/hello.html")
+        equal(frame.document.title, "Hello")
 
         ok(frame.history.length > 1)
         goBack(frame, function() {
           goForward(frame, function() {
             equal(frame.location.pathname, "/hello.html")
+            equal(frame.document.title, "Hello")
             start()
           })
         })
@@ -676,6 +682,30 @@ if ($.support.pjax) {
 
           start()
         })
+      }
+    })
+  })
+
+  asyncTest("popstate going back to page triggers pjax:popstate event", function() {
+    var frame = this.frame
+
+    equal(frame.location.pathname, "/home.html")
+
+    frame.$('#main').on('pjax:popstate', function(event) {
+      equal(frame.location.pathname, "/home.html")
+      equal(event.state.container, '#main')
+      equal(event.direction, 'back')
+      start()
+    })
+
+    frame.$.pjax({
+      url: "hello.html",
+      container: "#main",
+      complete: function() {
+        equal(frame.location.pathname, "/hello.html")
+
+        ok(frame.history.length > 1)
+        goBack(frame, function() {})
       }
     })
   })
