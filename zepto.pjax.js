@@ -149,7 +149,7 @@ var pjax = $.pjax = function( options ) {
   function fire(type, args) {
     var event = $.Event(type, { relatedTarget: target })
     context.trigger(event, args)
-    return !event.isDefaultPrevented()
+    return !event.defaultPrevented
   }
 
   var timeoutTimer
@@ -232,8 +232,8 @@ var pjax = $.pjax = function( options ) {
     context.html(container.contents)
 
     // Scroll to top by default
-    if (typeof options.scrollTo === 'number')
-      $(window).scrollTop(options.scrollTo)
+    //if (typeof options.scrollTo === 'number')
+    //  $(window).scrollTop(options.scrollTo)
 
     // Google Analytics support
     if ( (options.replace || options.push) && window._gaq )
