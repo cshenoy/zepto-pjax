@@ -149,6 +149,9 @@ var pjax = $.pjax = function( options ) {
   function fire(type, args) {
     var event = $.Event(type, { relatedTarget: target })
     context.trigger(event, args)
+    if (event.isDefaultPrevented) {
+        return !event.isDefaultPrevented()
+    }
     return !event.defaultPrevented
   }
 
@@ -232,8 +235,8 @@ var pjax = $.pjax = function( options ) {
     context.html(container.contents)
 
     // Scroll to top by default
-    //if (typeof options.scrollTo === 'number')
-    //  $(window).scrollTop(options.scrollTo)
+    if (typeof options.scrollTo === 'number' && $.scrollTop)
+      $(window).scrollTop(options.scrollTo)
 
     // Google Analytics support
     if ( (options.replace || options.push) && window._gaq )
