@@ -25,6 +25,8 @@
 
 pjax is a jQuery plugin that uses ajax and pushState to deliver a fast browsing experience with real permalinks, page titles, and a working back button.
 
+This version has been ported to support [Zepto.js](http://zeptojs.com) instead of jQuery.
+
 pjax works by grabbing html from your server via ajax and replacing the content of a container on your page with the ajax'd html. It then updates the browser's current url using pushState without reloading your page's layout or any resources (js, css), giving the appearance of a fast, full page load. But really it's just ajax and pushState.
 
 For [browsers that don't support pushState][compat] pjax fully degrades.
@@ -80,35 +82,19 @@ Also check out [RailsCasts #294 : Playing with PJAX](http://railscasts.com/episo
 
 ## Installation
 
-### bower
-
-Via [bower](https://github.com/twitter/bower).
-
-```
-$ bower install jquery-pjax
-```
-
-Or add `jquery-pjax` to your apps `component.json`.
-
-``` json
-  "dependencies": {
-    "jquery-pjax": "latest"
-  }
-```
-
 ### standalone
 
-pjax can be downloaded directly into your app's public directory - just be sure you've loaded jQuery first.
+pjax can be downloaded directly into your app's public directory - just be sure you've loaded Zepto first.
 
 ```
-curl -O https://raw.github.com/defunkt/jquery-pjax/master/jquery.pjax.js
+curl -O https://raw.github.com/cshenoy/zepto-pjax/master/zepto.pjax.js
 ```
 
 **WARNING** Do not hotlink the raw script url. GitHub is not a CDN.
 
 ## Dependencies
 
-Requires jQuery 1.8.x or higher.
+Requires Zepto 1.0 or higher.
 
 ## Compatibility
 
@@ -299,8 +285,8 @@ $(document).on('click', 'a[data-pjax]', function(event) {
 ## Contributing
 
 ```
-$ git clone https://github.com/defunkt/jquery-pjax.git
-$ cd jquery-pjax/
+$ git clone https://github.com/cshenoy/zepto-pjax.git
+$ cd zepto-pjax/
 ```
 
 To run the test suite locally, start up the Sinatra test application.
