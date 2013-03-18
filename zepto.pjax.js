@@ -33,7 +33,7 @@ $.noop = function(){};
 //
 // Returns the jQuery object
 $.fn.pjax = function( container, options ) {
-  return this.on('click.pjax', function(event){
+  return this.on('click.pjax', selector, function(event){
     handleClick(event, container, options)
   })
 }
